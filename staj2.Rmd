@@ -1,0 +1,584 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+****************************
+
+
+```{r}
+library("twitteR")
+
+
+
+library("openssl")
+
+
+
+library("httpuv")
+
+
+
+library("twitteR")
+
+
+
+library("tm")
+
+
+
+library("stringr")
+
+
+
+library("dplyr")
+```
+
+
+
+```{r}
+library(twitteR)
+library(ROAuth)
+library(tm)
+library(RCurl) 
+options(RCurlOptions = list(cainfo = system.file("CurlSSL", "cacert.pem", package = "RCurl")))
+
+api_key<- "H87VMYThgfKvANWLNqqcGxTRd"
+api_secret<- "6dwAK608WjbrEpKP0jGVCGVPeaT9vpzGHAPEGSBTyCWeBukCmb"
+access_token<- "2408033235-e1hiA3FCuAuVeYSf0CljOUbLiy5pfwrC25H2DZk"
+access_token_secret<- "bidNDXU9itTnGcqVI5CgDaCzCgXMaef4wurDvxFJdT1w2"
+
+# registerTwitterOAuth(twitCred)
+setup_twitter_oauth(api_key, api_secret, access_token, access_token_secret)
+
+#updateStatus("hi there!") 
+
+```
+
+```{r}
+## Hashtag'lerden Veri Cekmek
+
+
+library(tidyverse)
+availableTrendLocations() %>% filter(country == "Turkey")
+
+h <- getTrends(2344116)
+head(h,20)
+
+
+tw <- searchTwitter("#EbrarKarakurt", n = 1000)
+
+
+class(tw)
+str(tw)
+
+df_tw <- twListToDF(tw)
+View(df_tw)
+```
+
+
+
+
+```{r}
+
+## Profillerden Veri Cekmek
+
+
+df_user <- userTimeline('civciki', n = 100)
+df_me <- twListToDF(df_user)
+View(df_me)
+
+```
+
+
+# 3.Profil Analizi
+
+
+## Temel Bilgilerin Cekilmesi
+```{r}
+
+civ<- getUser("civciki")
+attributes(civ)
+str(civ)
+civ$name
+civ$id
+civ$screenName 
+civ$created  #hesap oluşturma tarihi
+civ$url
+civ$location
+civ$statusesCount #kaç twit var?
+civ$followersCount  #takipçisayısı
+civ$favoritesCount  #favsayısı
+civ$friendsCount   #takipettiğininsayısı
+civ$profileImageUrl  #profilfotosuurl
+download.file("http://pbs.twimg.com/profile_images/1414676676886269959/L07eqLjb_normal.jpg", 
+              destfile = "pl.jpg")
+
+civ$getFavorites(n=3)
+
+civ$getFriends(n=10)  #idleri ile arkadaşlar
+
+
+atom <- getUser("hulyaaltaylar")
+atom$favoritesCount
+atom$description 
+atom$location
+
+civ$getFollowers(n=10)
+civ$getFollowerIDs(n = 10)
+
+
+civ$lastStatus$text  #son atılan twit
+civ$lastStatus$statusSource  #son atılan twitin kaynağıı
+
+```
+
+
+```{r}
+## Profilin En'leri 
+
+
+df_user <- userTimeline('fatihportakal', n = 200)
+
+df <- twListToDF(df_user)
+
+
+df %>% 
+  select(text, favoriteCount) %>%     #twitleri ve favori sayılarını çekme
+  arrange(desc(favoriteCount)) %>%    #sıralama işlemi yap
+  top_n(5) %>%                # en .ok fav alan top 5 twit
+  View()     #bu twitleri göster
+
+# örneğin fatih portakalın top 5 fav alan twitlerini görmek şu çıkarımda bulunmamıza yarar.bu kişi en çok hangi konularda konuştupunda ilgi gördü ve dikkate alındı.Çevresindeki insanları en çok nasıl etkiledi.
+
+df %>%              #yukarıdaki gibi retwetleri görüyoruz
+  select(text, retweetCount) %>%   
+  arrange(desc(retweetCount)) %>%
+  top_n(5) %>%
+  View()
+
+
+
+
+
+
+
+
+```
+
+
+```{r}
+
+## Retweet ve Favori Dagilimlari
+
+df_user <- userTimeline('fatihportakal', n = 200)
+df <- twListToDF(df_user)
+c <- data.frame(fav = df$favoriteCount, ret = df$retweetCount)
+ggplot(data = c, aes(fav)) + geom_density()
+library(funModeling)
+profiling_num(c)
+
+ggplot(c,aes(fav)) + 
+  geom_histogram(aes(y=..density..), colour = "black", fill = "white") +
+  geom_density(alpha = 0.3, fill = "orange")
+
+
+
+```
+
+
+
+
+```{r}
+## Kullanim Saatleri Dagilimi
+
+df_user <- userTimeline('fatihportakal', n = 200)
+df <- twListToDF(df_user)
+library(lubridate)
+ 
+hist(hour(df$created), col = "purple", 
+     xlab = "Saat Araligi", 
+     ylab = "Tweet Sayisi",
+     xlim = c(0,25))
+
+gunisim <- wday(df$created, label = TRUE)
+
+ggplot(df, aes(gunisim)) + geom_bar()
+
+
+
+
+
+
+```
+
+
+
+## Baglanma Kaynaklari
+
+```{r}
+df_user <- userTimeline("fatihportakal", n=500) 
+df <- twListToDF(df_user)
+df$statusSource[1]
+
+kaynaklar <- df$statusSource
+
+kaynaklar <- gsub("</a>","", kaynaklar)
+kaynaklar <- strsplit(kaynaklar, ">")
+kaynaklar <- sapply(kaynaklar, function(x) x[2])
+kaynak_tablosu <- table(kaynaklar)
+pie(kaynak_tablosu, radius = 0.9, border = 8)
+```
+
+
+
+##  Takipcilerin Analizi
+
+```{r}
+
+v <- getUser("civciki")
+takipciler <- v$getFollowers()
+df <- twListToDF(takipciler)
+View(df)
+
+
+df %>% 
+  mutate(popi_indeksi = friendsCount / followersCount) %>%
+  select(name, description, popi_indeksi) %>%
+  arrange(desc(popi_indeksi)) %>%
+  top_n(5)
+
+
+
+df %>% 
+  filter(followersCount > friendsCount) %>%
+  mutate(popi_indeksi = friendsCount / followersCount) %>%
+  select(name, description, popi_indeksi) %>%
+  arrange(desc(popi_indeksi)) %>%
+  top_n(5)
+
+df %>% 
+  filter(followersCount > friendsCount) %>%
+  mutate(farklar = followersCount - friendsCount) %>%
+  select(farklar) %>%
+  summarise(n = n(),
+            mean = mean(farklar),
+            median = mean(farklar),
+            sd = sd(farklar))
+
+
+df %>% 
+  filter(followersCount > friendsCount) %>%
+  mutate(farklar = followersCount - friendsCount) %>%
+  filter(farklar > 1000) %>%
+  mutate(popi_indeksi = friendsCount / followersCount) %>%
+  select(name, description, popi_indeksi) %>%
+  arrange(desc(popi_indeksi)) %>%
+  top_n(5)
+
+```
+
+
+## Takip Edilenlerin Analizi
+
+```{r}
+
+arkadaslar <- v$getFriends()
+df <- twListToDF(arkadaslar)
+df$location
+
+
+ggplot(df, aes(df$location)) + geom_bar()
+
+df$location <- sapply(df$location, function(x) ifelse(nchar(x) > 0, x, NA ))
+
+df <- df[!is.na(df$location),]
+
+
+ggplot(df, aes(location) ) + geom_bar()
+
+
+a <- df %>% group_by(location) %>%
+  summarise(n = n())
+
+b <- a %>% filter(n > mean(a$n))
+
+ggplot(b, aes(b$location) ) + geom_bar()
+
+```
+
+
+# 4.Hashtag Analizi
+
+
+## Trendlere Erismek
+```{r}
+
+availableTrendLocations() %>% filter(country == "Turkey")
+
+getTrends(woeid = 23424969)
+
+a <- searchTwitter("#datascience", n = 200)
+df<- twListToDF(a)
+View(df)
+
+```
+
+
+## Hashtag Betimleme
+
+### Etikete katilim saglayan essiz kac kisi var?
+```{r}
+
+df %>% distinct(screenName) %>% count()
+
+
+```
+
+
+
+
+
+### Etikete en cok katki saglayan 5 kisi kimdir?
+
+```{r}
+df %>% group_by(screenName) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n)) %>%
+  top_n(20)
+
+```
+
+
+
+
+### Etikete Katma Deger Saglayan En Degerli 5 kisi Kimdir?
+
+
+```{r}
+df %>% 
+  filter(isRetweet == "FALSE") %>%
+  group_by(screenName) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n)) %>%
+  top_n(10)
+
+
+# updateStatus("You are the best original contributer for this hashtag #datascience. 
+      #       @IainLJBrown-23, programmingncr-19, BristowColin-14")
+
+#mvk <- getUser("civciki")
+#mvk$lastStatus$text  
+
+
+searchTwitter("#datascience", n = 100, resultType = "recent")
+
+```
+
+
+
+### En cok favlanan 5 twit
+```{r}
+
+df %>% select(text, screenName, favoriteCount) %>%
+  arrange(desc(favoriteCount)) %>%
+  top_n(5) %>% View()
+
+```
+
+
+### En cok retweet edilen 5 twit
+
+```{r}
+
+
+df %>% select(text, screenName, statusSource, retweetCount) %>%
+  arrange(desc(retweetCount)) %>%
+  top_n(50) %>% View()
+
+```
+
+
+### Tweet Saat Dagilimi
+
+```{r}
+
+a <- searchTwitter("#datascience", n = 500)
+df <- twListToDF(a)
+
+library(lubridate)
+
+hist(hour(df$created), col = "purple", xlim = c(5,24))
+
+```
+
+
+### Kaynak Dagilimi
+
+```{r}
+
+
+df$statusSource[1]
+
+kaynaklar <- df$statusSource
+
+kaynaklar <- gsub("</a>","", kaynaklar)
+kaynaklar <- strsplit(kaynaklar, ">")
+kaynaklar <- sapply(kaynaklar, function(x) x[2])
+kaynak_tablosu <- table(kaynaklar)
+pie(kaynak_tablosu, radius = 0.9, border = 8)
+
+df <- data.frame(kaynak_tablosu) 
+df <- df %>% filter(Freq >50)
+
+
+ggplot(df, aes(kaynaklar, Freq)) + geom_bar(stat = "identity") 
+
+
+
+```
+
+
+
+# 5.UYGULAMALAR 
+
+## UYGULAMA I - ipad mi iphone mu?
+```{r}
+df_user <- userTimeline("fatihportakal", n=200) 
+df <- twListToDF(df_user)
+View(df)
+
+kaynaklar <- df$statusSource
+kaynaklar <- gsub("</a>","", kaynaklar)
+kaynaklar <- strsplit(kaynaklar, ">")
+kaynaklar <- sapply(kaynaklar, function(x) x[2])
+kaynak_tablosu <- table(kaynaklar)
+
+
+nrow(df)
+length(kaynaklar)
+df$kaynaklar <- kaynaklar
+
+test_df <- df %>% filter(kaynaklar == "Twitter for iPad" | 
+                           kaynaklar == "Twitter for iPhone") %>%
+  select(kaynaklar, retweetCount, favoriteCount)
+
+
+
+ #t.test(retweetCount~kaynaklar, data=test_df)  ##hata mı veriyor?
+
+
+
+```
+
+
+
+
+
+
+
+## UYGULAMA II - Twitter Metin Madencilgi Kendinizi 5 Kelime ile Anlatabilir Misiniz?
+```{r}
+df_user <- userTimeline('fatihportakal', n = 200)
+df <- twListToDF(df_user)
+
+
+doc.corpus <- Corpus(VectorSource(df$text))
+doc.corpus <- tm_map(doc.corpus, content_transformer(tolower))
+doc.corpus <- tm_map(doc.corpus, content_transformer(removePunctuation))
+doc.corpus <- tm_map(doc.corpus,content_transformer(removeNumbers))
+
+removeURL <- function(x) gsub("http[[:alnum:]]*", "", x)
+myCorpus <- tm_map(doc.corpus, removeURL)
+myCorpus <- tm_map(myCorpus, stripWhitespace)#bosluklarin
+tdm <- TermDocumentMatrix(myCorpus)
+findFreqTerms(tdm, lowfreq = 5)
+
+
+
+
+
+
+
+
+
+#YABANCI
+
+df_user <- userTimeline('AndrewYNg', n = 200)
+df <- twListToDF(df_user)
+
+doc.corpus <- Corpus(VectorSource(df$text))
+doc.corpus <- tm_map(doc.corpus, content_transformer(tolower))
+doc.corpus <- tm_map(doc.corpus, content_transformer(removePunctuation))
+doc.corpus <- tm_map(doc.corpus,content_transformer(removeNumbers))
+doc.corpus <- tm_map(doc.corpus, removeWords, stopwords("english"))
+removeURL <- function(x) gsub("http[[:alnum:]]*", "", x)
+myCorpus <- tm_map(doc.corpus, removeURL)
+library(SnowballC)
+doc.corpus <- tm_map(doc.corpus, stemDocument)
+myCorpus <- tm_map(myCorpus, stripWhitespace)#bosluklarin temizlenmesi
+
+inspect(myCorpus[11:15])
+
+tdm <- TermDocumentMatrix(myCorpus)
+
+findFreqTerms(tdm, lowfreq = 20)
+
+```
+
+
+
+
+
+## UYGULAMA III - Arkadasini Soyle Kim Oldugunu Soyleyeyim
+```{r}
+v <- getUser("jtleek")
+arkadaslar <- v$getFriends()
+df_jt <- twListToDF(arkadaslar)
+doc.corpus <- Corpus(VectorSource(df_jt$description))
+doc.corpus <- tm_map(doc.corpus, content_transformer(tolower))
+doc.corpus <- tm_map(doc.corpus, content_transformer(removePunctuation))
+doc.corpus <- tm_map(doc.corpus,content_transformer(removeNumbers))
+doc.corpus <- tm_map(doc.corpus, removeWords, stopwords("english"))
+removeURL <- function(x) gsub("http[[:alnum:]]*", "", x)
+myCorpus <- tm_map(doc.corpus, removeURL)
+library(SnowballC)
+doc.corpus <- tm_map(doc.corpus, stemDocument)
+myCorpus <- tm_map(myCorpus, stripWhitespace)#bosluklarin temizlenmesi
+
+View(df_jt)
+
+tdm <- TermDocumentMatrix(myCorpus)
+
+findFreqTerms(tdm, lowfreq = 40)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
